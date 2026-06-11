@@ -1,0 +1,23 @@
+[project]
+name = "ncdb-monitor"
+version = "0.1.0"
+
+description = "Monitoring dashboard for NCDB datasets"
+
+authors = [
+    {name = "Edward Givelberg"}
+]
+
+dependencies = [
+    "jinja2",
+    "ncdb @ git+https://github.com/NOAA-EMC/ncdb.git",
+    # "ncdb @ git+https://github.com/givelberg/ncdb.git",
+]
+
+[project.scripts]
+ncdb-monitor = "ncdb_monitor.cli:main"
+
+[tool.setuptools.package-data]
+ncdb_monitor = [
+    "templates/*.html"
+]

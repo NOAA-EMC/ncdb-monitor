@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}{{ obsspace.name }}{% endblock %}
+
+{% block content %}
+
+<h2 style="font-size: 1.6em; margin-bottom: 5px; margin-top: 80px;">{{ obsspace.name }}</h2>
+
+{% for variable in obsspace.variables %}
+
+<div class="plot">
+
+    <h3 style="font-size: 1.2em; color: #555; margin-top: 0; margin-bottom: 20px;">{{ variable.name }}</h3>
+
+    {% for metric_name, metric in variable.metrics.items() %}
+
+        <div class="plot">
+            <h4 style="font-size: 1.1em; margin-top: 0; margin-bottom: 10px;">{{ metric_name }}</h4>
+            <img src="{{ metric.local_path }}" alt="{{ variable.name }}">
+        </div>
+
+    {% endfor %}
+
+    {% if website.meta.has_snapshots and variable.snapshots %}
+
+        <div class="snapshots">
+
+            {% for snapshot in variable.snapshots %}
+
+            <div class="snapshot">
+                <p style="font-size: 0.9em; margin-top: 0; margin-bottom: 8px;"><strong>Cycle:</strong> {{ snapshot.cycle }}</p>
+                <img src="{{ snapshot.local_path }}">
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+{% endfor %}
+
+{% endblock %}

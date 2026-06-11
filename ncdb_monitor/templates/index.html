@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}NCDB Monitor{% endblock %}
+
+{% block extra_head %}
+    <script>
+        function showDataset(dirName) {
+            document.querySelectorAll(".dataset").forEach(dataset => {
+                dataset.classList.remove("active");
+            });
+
+            document.querySelectorAll(".tab-button").forEach(button => {
+                button.classList.remove("active");
+            });
+
+            document.getElementById("dataset-" + dirName).classList.add("active");
+            document.getElementById("button-" + dirName).classList.add("active");
+        }
+
+        window.onload = function() {
+            const first = document.querySelector(".tab-button");
+            if (first) {
+                first.click();
+            }
+        };
+    </script>
+{% endblock %}
+
+{% block content %}
+
+<div class="tabs">
+    {% for dataset in website.datasets %}
+    <button class="tab-button" id="button-{{ dataset.dir_name }}" onclick="showDataset('{{ dataset.dir_name }}')" title="Root directory: {{ dataset.root_dir }}">
+        {{ dataset.name }}
+    </button>
+    {% endfor %}
+</div>
+
+{% for dataset in website.datasets %}
+<div class="dataset" id="dataset-{{ dataset.dir_name }}">
+    <p>Directory: <abbr title="{{ dataset.root_dir }}">{{ dataset.root_dir.split('/')[-1] if '/' in dataset.root_dir else dataset.root_dir }}</abbr></p>
+    <p>{{ dataset.obsspaces|length }} obsspaces</p>
+
+    {% for obsspace in dataset.obsspaces %}
+        <div class="plot">
+
+                <h3>
+                        <a href="{{ dataset.dir_name }}/{{ obsspace.safe_name }}/">
+                                {{ obsspace.name }}
+                        </a>
+                </h3>
+
+                {% set v = obsspace.preview_variable %}
+
+                {% if v %}
+                        <img src="{{ v.metrics.nobs.path }}">
+                {% endif %}
+
+        </div>
+
+    {% endfor %}
+</div>
+{% endfor %}
+{% endblock %}
