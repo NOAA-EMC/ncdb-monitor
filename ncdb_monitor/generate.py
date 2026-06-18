@@ -163,6 +163,20 @@ def generate_obsspace_data(
                     "local_path": f"{metric_name}/{plot['path']}"
                 }
 
+
+        # Extract the real numerical observation count from the database for the preview column
+        try:
+            field = obsspace.field(var)
+            nobs_field = field.nobs
+            nobs_cycles = nobs_field.cycles
+            if nobs_cycles:
+                latest_cycle = nobs_cycles[-1]
+                # Evaluate the scalar value at the most recent database cycle entry
+                variable_info["last_nobs_value"] = int(nobs_field[latest_cycle].data)
+        except Exception as e:
+            logger.debug(f"Could not extract numerical observation count for {var}: {e}")
+
+
         # CONDITIONAL OPTIONAL GENERATION: 2D Snapshot Maps
         if generate_snapshots:
             try:
@@ -193,6 +207,82 @@ def generate_obsspace_data(
 
 
 def generate_website_data(db, website_dir, generate_snapshots=True):
+    raw_run = load_latest_run(website_dir)
+    
+    # Clean up the timestamp format for the top bar right at the data ingestion point
+    if raw_run and "end_time" in raw_run:
+        try:
+            clean_time = raw_run["end_time"].replace('Z', '+00:00')
+            dt = datetime.fromisoformat(clean_time)
+            raw_run["end_time"] = dt.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            pass
+
+    website_data = {
+        "meta": {
+            "generated_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "database_file": str(db.path),
+            "has_snapshots": generate_snapshots,
+        },
+        "run": raw_run,
+        "datasets": []
+    }
+
+    metric_names = ["nobs", "mean"]
+
+    for dataset in db.datasets():
+        dataset_name = dataset.name
+        logger.info(f"Processing dataset {dataset_name}")
+
+        if hasattr(dataset, "id") and dataset.id is not None:
+            dataset_dir_name = f"{dataset_name}_id{dataset.id}"
+        else:
+            root_hash = hashlib.md5(str(dataset.root_dir).encode("utf-8")).hexdigest()[:8]
+            dataset_dir_name = f"{dataset_name}_{root_hash}"
+
+        dataset_dir = os.path.join(website_dir, dataset_dir_name)
+        os.makedirs(dataset_dir, exist_ok=True)
+
+        # Safely extract and format available cycle strings for this dataset
+        ds_cycles = []
+        if hasattr(dataset, "cycles"):
+            for c in dataset.cycles:
+                if isinstance(c, datetime):
+                    ds_cycles.append(c.strftime("%Y-%m-%d %H:%M"))
+                else:
+                    ds_cycles.append(str(c))
+        ds_cycles = sorted(list(set(ds_cycles)))
+
+        dataset_info = {
+            "name": dataset_name,
+            "root_dir": dataset.root_dir,
+            "dir_name": dataset_dir_name,
+            "cycles": ds_cycles,  # Exposed directly to templates/index.html
+            "obsspaces": []
+        }
+
+        obsspace_names = [n.name for n in dataset.obsspaces()]
+        for obsspace_name in obsspace_names:
+            obsspace = dataset.obsspace(obsspace_name)
+            obsspace_info = generate_obsspace_data(
+                dataset_name,
+                obsspace,
+                dataset_dir,
+                metric_names,
+                dataset_dir_name=dataset_dir_name,
+                generate_snapshots=generate_snapshots
+            )
+            dataset_info["obsspaces"].append(obsspace_info)
+
+        website_data["datasets"].append(dataset_info)
+
+    website_data_file = os.path.join(website_dir, WEBSITE_DATA_FILE)
+    with open(website_data_file, "w") as f:
+        json.dump(website_data, f, indent=2)
+        
+    return website_data
+
+def oldgenerate_website_data(db, website_dir, generate_snapshots=True):
     website_data = {
         "meta": {
             "generated_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),

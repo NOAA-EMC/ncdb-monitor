@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}NCDB Monitor{% endblock %}
+{% block title %}NCDB Monitor Dashboard{% endblock %}
 
 {% block extra_head %}
     <script>
@@ -38,27 +38,44 @@
 
 {% for dataset in website.datasets %}
 <div class="dataset" id="dataset-{{ dataset.dir_name }}">
-    <p>Directory: <abbr title="{{ dataset.root_dir }}">{{ dataset.root_dir.split('/')[-1] if '/' in dataset.root_dir else dataset.root_dir }}</abbr></p>
-    <p>{{ dataset.obsspaces|length }} obsspaces</p>
+    <div class="dataset-meta">
+        <strong>Data directory:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">{{ dataset.root_dir }}</code>
+        <span style="margin-left: 10px;"> <strong>{{ dataset.obsspaces|length }}</strong> obsspaces</span>
+    </div>
 
-    {% for obsspace in dataset.obsspaces %}
-        <div class="plot">
 
-                <h3>
-                        <a href="{{ dataset.dir_name }}/{{ obsspace.safe_name }}/">
-                                {{ obsspace.name }}
-                        </a>
-                </h3>
+    <div class="dataset-cycles" style="font-size: 0.85em; color: #475569; background: #f8fafc; padding: 8px 12px; border-left: 3px solid #cbd5e1; margin-bottom: 20px; border-radius: 0 4px 4px 0;">
+        <strong>Available Cycles ({{ dataset.cycles|length }} total):</strong> 
+        {% if dataset.cycles|length > 0 %}
+            <span style="font-family: monospace; color: #0f172a; margin-left: 6px;">
+                {{ dataset.cycles[0] }} &rarr; {{ dataset.cycles[-1] }}
+            </span>
+        {% else %}
+            <span style="color: #94a3b8; font-style: italic; margin-left: 6px;">No registered cycles found</span>
+        {% endif %}
+    </div>
 
-                {% set v = obsspace.preview_variable %}
-
-                {% if v %}
-                        <img src="{{ v.metrics.nobs.path }}">
-                {% endif %}
-
-        </div>
-
-    {% endfor %}
+    <table class="monitor-table">
+        <tbody>
+            {% for obsspace in dataset.obsspaces %}
+            <tr>
+                <td style="width: 40%;">
+                    <a class="obsspace-link" href="{{ dataset.dir_name }}/{{ obsspace.safe_name }}/">
+                        {{ obsspace.name }}
+                    </a>
+                </td>
+                <td class="metric-cell" style="width: 60%;">
+                    {% set preview_var = obsspace.preview_variable %}
+                    {% if preview_var and preview_var.last_nobs_value is defined %}
+                        {{ preview_var.last_nobs_value }}
+                    {% else %}
+                        <span style="color: #94a3b8; font-weight: normal; font-size: 0.9em;">0 nobs</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endfor %}
 {% endblock %}
