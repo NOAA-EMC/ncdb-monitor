@@ -43,7 +43,6 @@
         <span style="margin-left: 10px;"> <strong>{{ dataset.obsspaces|length }}</strong> obsspaces</span>
     </div>
 
-
     <div class="dataset-cycles" style="font-size: 0.85em; color: #475569; background: #f8fafc; padding: 8px 12px; border-left: 3px solid #cbd5e1; margin-bottom: 20px; border-radius: 0 4px 4px 0;">
         <strong>Available Cycles ({{ dataset.cycles|length }} total):</strong> 
         {% if dataset.cycles|length > 0 %}
@@ -55,27 +54,63 @@
         {% endif %}
     </div>
 
-    <table class="monitor-table">
+    <table class="monitor-table" style="margin-top: 4px; width: 100%; border-collapse: collapse; font-size: 0.88em;">
+<thead>
+            <tr style="border-bottom: 2px solid #cbd5e1; background: #f1f5f9;">
+                <th style="padding: 4px 8px; text-align: left; font-weight: 600; color: #475569;"></th>
+                <th style="padding: 4px 8px; text-align: right; font-weight: 600; color: #475569; width: 12%;"># cycles</th>
+                
+                {% set sample_space = dataset.obsspaces[0] %}
+                {% if sample_space and sample_space.preview_variable and sample_space.preview_variable.recent_nobs_labels %}
+                    {% for t in sample_space.preview_variable.recent_nobs_labels %}
+                    <th style="padding: 4px 8px; text-align: right; width: 12%; color: #475569; white-space: nowrap;">
+                        {% if t.date %}
+                            <span style="font-weight: 500; font-size: 1em; opacity: 0.95;">{{ t.date }}</span>
+                        {% endif %}
+                        <strong style="font-weight: 700; margin-left: 4px; color: #0f172a;">{{ t.hour }}</strong>
+                    </th>
+                    {% endfor %}
+                {% else %}
+                    <th style="padding: 4px 8px; text-align: right; font-weight: 600; color: #475569; width: 12%;">Run -3</th>
+                    <th style="padding: 4px 8px; text-align: right; font-weight: 600; color: #475569; width: 12%;">Run -2</th>
+                    <th style="padding: 4px 8px; text-align: right; font-weight: 600; color: #475569; width: 12%;">Run -1</th>
+                    <th style="padding: 4px 8px; text-align: right; font-weight: 600; color: #475569; width: 12%;">Latest</th>
+                {% endif %}
+            </tr>
+        </thead>
+
         <tbody>
             {% for obsspace in dataset.obsspaces %}
-            <tr>
-                <td style="width: 40%;">
-                    <a class="obsspace-link" href="{{ dataset.dir_name }}/{{ obsspace.safe_name }}/">
+            <tr style="border-bottom: 1px solid #e2e8f0; line-height: 1.1;">
+                <td style="padding: 5px 8px; font-weight: 500; text-align: left;">
+                    <a class="obsspace-link" href="{{ dataset.dir_name }}/{{ obsspace.safe_name }}/" style="color: #2563eb; text-decoration: none;">
                         {{ obsspace.name }}
                     </a>
                 </td>
-                <td class="metric-cell" style="width: 60%;">
-                    {% set preview_var = obsspace.preview_variable %}
-                    {% if preview_var and preview_var.last_nobs_value is defined %}
-                        {{ preview_var.last_nobs_value }}
-                    {% else %}
-                        <span style="color: #94a3b8; font-weight: normal; font-size: 0.9em;">0 nobs</span>
-                    {% endif %}
+                
+                {% set preview_var = obsspace.preview_variable %}
+                
+                <td style="padding: 5px 8px; text-align: right; color: #334155;">
+                    {{ preview_var.total_cycles_count if (preview_var and preview_var.total_cycles_count is defined) else 0 }}
                 </td>
+                
+                {% if preview_var and preview_var.recent_nobs_values is defined %}
+                    {% for val in preview_var.recent_nobs_values %}
+                    <td style="padding: 5px 8px; text-align: right; font-family: monospace; color: #0f172a;">
+                        {{ val }}
+                    </td>
+                    {% endfor %}
+                {% else %}
+                    <td style="padding: 5px 8px; text-align: right; color: #94a3b8;">0</td>
+                    <td style="padding: 5px 8px; text-align: right; color: #94a3b8;">0</td>
+                    <td style="padding: 5px 8px; text-align: right; color: #94a3b8;">0</td>
+                    <td style="padding: 5px 8px; text-align: right; color: #94a3b8;">0</td>
+                {% endif %}
             </tr>
             {% endfor %}
         </tbody>
     </table>
+
 </div>
 {% endfor %}
 {% endblock %}

@@ -164,17 +164,43 @@ def generate_obsspace_data(
                 }
 
 
-        # Extract the real numerical observation count from the database for the preview column
+ # Extract the real numerical observation count from the database for the preview column
         try:
             field = obsspace.field(var)
             nobs_field = field.nobs
             nobs_cycles = nobs_field.cycles
             if nobs_cycles:
-                latest_cycle = nobs_cycles[-1]
-                # Evaluate the scalar value at the most recent database cycle entry
-                variable_info["last_nobs_value"] = int(nobs_field[latest_cycle].data)
+                variable_info["total_cycles_count"] = len(nobs_cycles)
+                
+                # Extract the past 4 cycles directly
+                recent_cycles = nobs_cycles[-4:]
+                recent_vals = []
+                recent_times = []  
+                for cycle in recent_cycles:
+                    try:
+                        recent_vals.append(int(nobs_field[cycle].data))
+                        recent_times.append({
+                            "date": cycle.strftime("%m-%d"),
+                            "hour": cycle.strftime("%H")
+                        })
+                    except Exception:
+                        recent_vals.append(0)
+                        recent_times.append({"date": "", "hour": "N/A"})
+                
+                # Pad out leftwards if the tracking history contains less than 4 total cycles
+                while len(recent_vals) < 4:
+                    recent_vals.insert(0, 0)
+                    recent_times.insert(0, {"date": "", "hour": "N/A"})
+                    
+                variable_info["recent_nobs_values"] = recent_vals
+                variable_info["recent_nobs_labels"] = recent_times  
+                
+                # Maintain the old key as a reference point mapped to the last index of our array
+                variable_info["last_nobs_value"] = recent_vals[-1]
+                
         except Exception as e:
             logger.debug(f"Could not extract numerical observation count for {var}: {e}")
+
 
 
         # CONDITIONAL OPTIONAL GENERATION: 2D Snapshot Maps
@@ -337,6 +363,7 @@ def oldgenerate_website_data(db, website_dir, generate_snapshots=True):
     return website_data
 
 
+'''
 def main():
     db = Database("emcda.db")
     logger.info(db.list_datasets())
@@ -354,3 +381,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+'''

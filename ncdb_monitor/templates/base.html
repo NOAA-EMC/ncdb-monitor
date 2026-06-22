@@ -93,26 +93,29 @@
             color: #64748b;
             margin-bottom: 8px;
         }
-         
-        /* Cleaned Metrics Inventory Table Layout */
+
+		/* Metrics Inventory Table Layout */
         .monitor-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-top: 5px;
             text-align: left;
         }
-        .monitor-table tr:first-child td {
-            border-top: 2px solid #e2e8f0; /* Crisp top border anchor for the first row */
+        .monitor-table tr.obsspace-header-row td {
+            border-top: 1px solid #e2e8f0;
+            border-bottom: none;
         }
         .monitor-table td {
-            padding: 12px 16px;
-            border-bottom: 1px solid #edf2f7;
-            font-size: 0.95em;
+            padding: 4px 12px !important; /* Forces tight vertical spacing line-to-line */
+            font-size: 0.9em;
             vertical-align: middle;
         }
-        .monitor-table tr:hover {
-            background: #f8fafc;
+        .monitor-table tr.obsspace-data-row:hover {
+            background: #f1f5f9;
         }
+
+
+
         .obsspace-link {
             font-weight: 600;
             color: #2563eb;
