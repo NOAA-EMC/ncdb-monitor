@@ -65,7 +65,10 @@ def generate_time_series_plots(obsspace, metric_name, plot_dir):
         logger.info(f"Generating {metric_name} plot {plot_path}")
 
         try:
-            metric.plot(plot_path)
+            if metric_name == "mean":
+                metric.plot(plot_path, band=field.std_dev)
+            else:
+                metric.plot(plot_path)
         except Exception as e:
             logger.debug(f"Failed plotting {obsspace_name}:{var} metric={metric_name} due to {e}")
             continue
@@ -202,7 +205,6 @@ def generate_obsspace_data(
             logger.debug(f"Could not extract numerical observation count for {var}: {e}")
 
 
-
         # CONDITIONAL OPTIONAL GENERATION: 2D Snapshot Maps
         if generate_snapshots:
             try:
@@ -307,78 +309,3 @@ def generate_website_data(db, website_dir, generate_snapshots=True):
         json.dump(website_data, f, indent=2)
         
     return website_data
-
-def oldgenerate_website_data(db, website_dir, generate_snapshots=True):
-    website_data = {
-        "meta": {
-            "generated_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
-            "database_file": str(db.path),
-            "has_snapshots": generate_snapshots,  # Exposed dynamically to UI templates
-        },
-        "run": load_latest_run(website_dir),
-        "datasets": []
-    }
-
-    metric_names = ["nobs", "mean"]
-
-    for dataset in db.datasets():
-        dataset_name = dataset.name
-        logger.info(f"Processing dataset {dataset_name}")
-
-        if hasattr(dataset, "id") and dataset.id is not None:
-            dataset_dir_name = f"{dataset_name}_id{dataset.id}"
-        else:
-            root_hash = hashlib.md5(str(dataset.root_dir).encode("utf-8")).hexdigest()[:8]
-            dataset_dir_name = f"{dataset_name}_{root_hash}"
-
-        dataset_dir = os.path.join(website_dir, dataset_dir_name)
-        os.makedirs(dataset_dir, exist_ok=True)
-
-        dataset_info = {
-            "name": dataset_name,
-            "root_dir": dataset.root_dir,
-            "dir_name": dataset_dir_name,
-            "obsspaces": []
-        }
-
-        obsspace_names = [n.name for n in dataset.obsspaces()]
-        for obsspace_name in obsspace_names:
-            obsspace = dataset.obsspace(obsspace_name)
-            obsspace_info = generate_obsspace_data(
-                dataset_name,
-                obsspace,
-                dataset_dir,
-                metric_names,
-                dataset_dir_name=dataset_dir_name,
-                generate_snapshots=generate_snapshots  # Passed down to control execution
-            )
-            dataset_info["obsspaces"].append(obsspace_info)
-
-        website_data["datasets"].append(dataset_info)
-
-    website_data_file = os.path.join(website_dir, WEBSITE_DATA_FILE)
-    with open(website_data_file, "w") as f:
-        json.dump(website_data, f, indent=2)
-        
-    return website_data
-
-
-'''
-def main():
-    db = Database("emcda.db")
-    logger.info(db.list_datasets())
-
-    website_dir = "./website"
-    
-    # Generate the underlying tracking data structure conditionally
-    website_data = generate_website_data(db, website_dir, generate_snapshots=GENERATE_SNAPSHOTS)
-    
-    # Pass down the dataset representation dictionary cleanly
-    generate_html(
-        website_data,
-        website_dir
-    )
-
-if __name__ == "__main__":
-    main()
-'''
