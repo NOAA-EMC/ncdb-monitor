@@ -4,42 +4,94 @@
 
 {% block content %}
 
-<h2 style="font-size: 1.6em; margin-bottom: 5px; margin-top: 80px;">{{ obsspace.name }}</h2>
+<div style="margin-top: 70px;"></div>
 
+<!-- VARIABLE MAP LOOP LAYOUT -->
 {% for variable in obsspace.variables %}
-
-<div class="plot">
-
-    <h3 style="font-size: 1.2em; color: #555; margin-top: 0; margin-bottom: 20px;">{{ variable.name }}</h3>
-
-    {% for metric_name, metric in variable.metrics.items() %}
-
-        <div class="plot">
-            <h4 style="font-size: 1.1em; margin-top: 0; margin-bottom: 10px;">{{ metric_name }}</h4>
-            <img src="{{ metric.local_path }}" alt="{{ variable.name }}">
-        </div>
-
-    {% endfor %}
-
-    {% if website.meta.has_snapshots and variable.snapshots %}
-
-        <div class="snapshots">
-
-            {% for snapshot in variable.snapshots %}
-
-            <div class="snapshot">
-                <p style="font-size: 0.9em; margin-top: 0; margin-bottom: 8px;"><strong>Cycle:</strong> {{ snapshot.cycle }}</p>
-                <img src="{{ snapshot.local_path }}">
-            </div>
-
-            {% endfor %}
-
-        </div>
-
-    {% endif %}
+<div class="variable-container" id="var-block-{{ loop.index }}" style="display: none;">
+    
+    <!-- 1. INDEPENDENT UNCONDITIONAL GLOBAL NOBS CHART AT TOP -->
+    <div style="margin-bottom: 15px; text-align: center;">
+        {% if variable.metrics.nobs %}
+            <img src="{{ variable.metrics.nobs.local_path }}" alt="Global Observations" style="max-width: 100%; height: auto;">
+        {% endif %}
+    </div>
 
 </div>
-
 {% endfor %}
+
+<!-- 2. CONTROL SELECTORS PLACED DIRECTLY BENEATH THE TOP CHART -->
+<div style="margin-bottom: 20px; padding: 5px 0; display: flex; gap: 15px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+    <div>
+        <select id="variableSelector" onchange="switchView()" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 0.9em; min-width: 320px;">
+            {% for variable in obsspace.variables %}
+                <option value="var-block-{{ loop.index }}">{{ variable.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div>
+        <select id="basinSelector" onchange="switchView()" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 0.9em; min-width: 180px;">
+            <option value="global">Global</option>
+            <option value="atlantic">Atlantic Ocean</option>
+            <option value="pacific">Pacific Ocean</option>
+            <option value="indian">Indian Ocean</option>
+            <option value="arctic">Arctic Ocean</option>
+            <option value="southern">Southern Ocean</option>
+        </select>
+    </div>
+</div>
+
+<!-- 3. HISTORICAL MEAN CHART CONTAINERS PLACED DIRECTLY BELOW SELECTORS -->
+<!-- Replace just the mean chart rendering loop inside templates/obsspace.html -->
+{% for variable in obsspace.variables %}
+<div class="mean-container" id="mean-block-{{ loop.index }}" style="display: none; text-align: center;">
+    <img id="mean-img-{{ loop.index }}" src="" alt="Historical Mean" style="max-width: 100%; height: auto; display: none;"
+         data-global="{{ variable.metrics.mean.local_path if variable.metrics.mean else '' }}"
+         data-atlantic="{{ variable.metrics.meanAtlantic.local_path if variable.metrics.meanAtlantic else '' }}"
+         data-pacific="{{ variable.metrics.meanPacific.local_path if variable.metrics.meanPacific else '' }}"
+         data-indian="{{ variable.metrics.meanIndian.local_path if variable.metrics.meanIndian else '' }}"
+         data-arctic="{{ variable.metrics.meanArctic.local_path if variable.metrics.meanArctic else '' }}"
+         data-southern="{{ variable.metrics.meanSouthern.local_path if variable.metrics.meanSouthern else '' }}">
+</div>
+{% endfor %}
+
+<!-- BARE RUNTIME ROUTING LOGIC -->
+<script>
+function switchView() {
+    const varSelector = document.getElementById("variableSelector");
+    const basinSelector = document.getElementById("basinSelector");
+    
+    const activeBlockId = varSelector.value;
+    const basinKey = basinSelector.value;
+    const idx = activeBlockId.replace("var-block-", "");
+
+    // Toggle global observation charts visibility states
+    document.querySelectorAll(".variable-container").forEach(block => {
+        block.style.display = (block.id === activeBlockId) ? "block" : "none";
+    });
+
+    // Toggle historical mean chart container row sets
+    document.querySelectorAll(".mean-container").forEach(block => {
+        block.style.display = (block.id === `mean-block-${idx}`) ? "block" : "none";
+    });
+
+    // Remap targeted source path values dynamically based on selected basin code
+    const meanImg = document.getElementById(`mean-img-${idx}`);
+    if (meanImg) {
+        const targetedPath = meanImg.getAttribute(`data-${basinKey}`);
+        if (targetedPath && targetedPath.trim() !== "") {
+            meanImg.src = targetedPath;
+            meanImg.style.display = "inline-block";
+        } else {
+            meanImg.style.display = "none";
+        }
+    }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+    switchView();
+});
+</script>
 
 {% endblock %}
