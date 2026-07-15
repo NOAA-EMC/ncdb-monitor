@@ -63,7 +63,7 @@ def generate_time_series_plots(obsspace, metric_name, plot_dir):
 
         out_file = safe_name(var) + f"_{metric_name}.png"  # Unique suffix prevents overwrites
         plot_path = os.path.join(plot_dir, out_file)
-        logger.info(f"Generating {metric_name} plot {plot_path}")
+        logger.debug(f"Generating {metric_name} plot {plot_path}")
 
         try:
             if metric_name == "mean":
@@ -79,59 +79,6 @@ def generate_time_series_plots(obsspace, metric_name, plot_dir):
                     metric.plot(plot_path)
             else:
                 metric.plot(plot_path)
-        except Exception as e:
-            logger.debug(f"Failed plotting {obsspace_name}:{var} metric={metric_name} due to {e}")
-            continue
-
-        plots.append({
-            "variable": var,
-            "path": out_file
-        })
-    return plots
-
-
-def old_generate_time_series_plots(obsspace, metric_name, plot_dir):
-    plots = []
-    obsspace_name = obsspace.name
-    variables = obsspace.list_variables(group="ObsValue")
-
-    for var in variables:
-        try:
-            field = obsspace.field(var)
-            if field.has_derived(var, metric_name):
-                metric = getattr(field, metric_name)
-            # else:
-                # logger.debug(f"DB lacks precomputed metric {metric_name} for {var}. Skipping.")
-                continue
-        except Exception as e:
-            logger.debug(f"Skipping {obsspace_name}:{var} due to structural error: {e}")
-            continue
-
-
-        out_file = safe_name(var) + ".png"
-        plot_path = os.path.join(plot_dir, out_file)
-        logger.info(f"Generating {metric_name} plot {plot_path}")
-
-        try:
-            if metric_name == "mean":
-                metric.plot(plot_path, band=field.std_dev)
-            elif metric_name.startswith("mean") and len(metric_name) > 4:
-                # Extract the basin number (e.g., '2' from 'mean2')
-                basin_num = metric_name[4:]
-                try:
-                    # Dynamically look up field.std_dev2, field.std_dev5, etc.
-                    std_dev_field = getattr(field, f"std_dev{basin_num}")
-                    metric.plot(plot_path, band=std_dev_field)
-                except Exception:
-                    # Fallback to no band if std_dev for this basin failed or doesn't exist
-                    metric.plot(plot_path)
-            else:
-                metric.plot(plot_path)
-
-            # if metric_name == "mean":
-                # metric.plot(plot_path, band=field.std_dev)
-            # else:
-                # metric.plot(plot_path)
         except Exception as e:
             logger.debug(f"Failed plotting {obsspace_name}:{var} metric={metric_name} due to {e}")
             continue

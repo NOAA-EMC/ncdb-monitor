@@ -43,7 +43,7 @@ def render_template(
 
     html = template.render(**context)
 
-    logger.info(
+    logger.debug(
         f"Writing {output_file}"
     )
 
@@ -93,7 +93,6 @@ def generate_html(website_dir):
 
     for dataset in website_data["datasets"]:
 
-        # Switched from dataset["name"] to the unique folder key to align with generate.py
         dataset_dir_name = dataset["dir_name"]
 
         for obsspace in dataset["obsspaces"]:
