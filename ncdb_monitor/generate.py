@@ -137,7 +137,7 @@ def generate_obsspace_data(
         dataset_dir_name = dataset_name
 
     obsspace_name = obsspace.name
-    logger.info(f"Processing obsspace {obsspace_name}")
+    logger.debug(f"Processing obsspace {obsspace_name}")
 
     obsspace_safe_name = safe_name(obsspace_name)
     obsspace_dir = os.path.join(dataset_dir, obsspace_safe_name)
@@ -160,7 +160,7 @@ def generate_obsspace_data(
     # variables = obsspace.list_variables(group="ObsValue")
     variables = obsspace.list_variables(group="ObsValue") + obsspace.list_variables(group="ombg")
     for var in variables:
-        logger.info(f"Processing variable {obsspace_name}:{var}")
+        logger.debug(f"Processing variable {obsspace_name}:{var}")
         variable_info = {
             "name": var,
             "metrics": {},

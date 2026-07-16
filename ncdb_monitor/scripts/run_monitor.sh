@@ -6,7 +6,7 @@ VENV="${MONITOR_DIR}/venv"
 DATABASE="${MONITOR_DIR}/emcda.db"
 WEBSITE_DIR="${MONITOR_DIR}/emcda_website"
 LOG_FILE="${MONITOR_DIR}/cron_monitor.log"
-LOCK_FILE="${MONITOR_DIR}/monitor.lock"  # <-- Added Lock File path
+LOCK_FILE="${MONITOR_DIR}/monitor.lock"
 
 RZDM_WEB_DIR="/home/people/emc/ftp/obsforge_website"
 RZDM_ADDRESS="egivelberg@emcrzdm:${RZDM_WEB_DIR}/"
@@ -18,17 +18,7 @@ N_CYCLES=-1
 # Exit immediately if any command fails
 set -e
 
-module purge
-module load envvar/1.0
-module load intel/19.1.3.304
-module load python/3.12.0
-module load geos/3.8.1
-module load proj/7.1.0
-
-
-# --- PREVENTION 1: Prevent concurrent runs using flock ---
-# This opens the lock file on file descriptor 9.
-# If already locked, it exits silently and immediately (code 0) so cron doesn't stack runs.
+# --- Prevent concurrent runs using flock ---
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
     echo "Warning: Another instance of run_monitor.sh is already running. Exiting."
@@ -36,12 +26,20 @@ if ! flock -n 9; then
 fi
 
 {
+    echo "Initializing Environment: $(date)"
+
+    module purge
+    module load envvar/1.0
+    module load intel/19.1.3.304
+    module load python/3.12.0
+    module load geos/3.8.1
+    module load proj/7.1.0
+
     # Double-check that the venv actually exists before trying to source it
     if [ ! -f "${VENV}/bin/activate" ]; then
         echo "ERROR: Virtual environment not found at ${VENV}" >&2
         exit 1
     fi
-
     source "${VENV}/bin/activate"
     echo "Activated virtual environment $VENV"
 
@@ -54,7 +52,6 @@ fi
     echo "=================================================="
 
     # --- PREVENTION 2: Force termination if it takes longer than 2 hours ---
-    # timeout -k 5m 2h will send SIGTERM at 2 hours, and SIGKILL (hard kill) 5 mins later if it resists.
     timeout -k 5m 2h ncdb-monitor run \
       --database "${DATABASE}" \
       --scanner obsforge_marine \
@@ -62,9 +59,7 @@ fi
       --n-cycles "${N_CYCLES}" \
       --website-dir "${WEBSITE_DIR}"
 
-    echo "--------------------------------------------------"
-    echo "Uploading website to rzdm: $(date)"
-    echo "--------------------------------------------------"
+    echo "$(date): Uploading website to ${RZDM_ADDRESS}"
 
     # Force a 10-minute maximum limit on the scp process just in case the network connection hangs
     timeout 10m scp -i "${SSH_KEY}" -qp -r "${WEBSITE_DIR}/"* "${RZDM_ADDRESS}"
@@ -73,7 +68,7 @@ fi
     echo "Monitor Pipeline complete: $(date)"
     echo "=================================================="
 
-} >> "$LOG_FILE"
+} >> "$LOG_FILE" 2>&1
 
 # --- ANYTHING BELOW THIS LINE ESCAPES THE LOG FILE AND GOES TO CRON MAIL ---
 echo "ObsForge Monitor completed a run at $(date)."
