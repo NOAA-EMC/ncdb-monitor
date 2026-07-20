@@ -5,22 +5,102 @@
 {% block extra_head %}
     <script>
         function showDataset(dirName) {
-            document.querySelectorAll(".dataset").forEach(dataset => {
-                dataset.classList.remove("active");
+            document.querySelectorAll(".dataset, .comparison-section-panel").forEach(panel => {
+                panel.style.display = "none";
             });
 
             document.querySelectorAll(".tab-button").forEach(button => {
                 button.classList.remove("active");
             });
 
-            document.getElementById("dataset-" + dirName).classList.add("active");
-            document.getElementById("button-" + dirName).classList.add("active");
+            const targetPanel = document.getElementById("dataset-" + dirName) || document.getElementById("panel-" + dirName);
+            if (targetPanel) {
+                targetPanel.style.display = "block";
+            }
+            const targetButton = document.getElementById("button-" + dirName);
+            if (targetButton) {
+                targetButton.classList.add("active");
+            }
+        }
+
+        // --- NEW MATRIX INTERACTION SYSTEM ---
+        const comparisonData = {{ website.comparisons | tojson }};
+
+        function initSelectors() {
+            const obsSelect = document.getElementById('obsspace-select');
+            if (!obsSelect) return; // Guard if comparisons tab isn't shown
+
+            const uniqueObs = [...new Set(comparisonData.map(item => item.obsspace))].sort();
+            
+            if (uniqueObs.length === 0) {
+                document.getElementById('plot-container').innerHTML = '<div style="color: #64748b; font-style: italic;">No comparison metrics found.</div>';
+                return;
+            }
+
+            obsSelect.innerHTML = uniqueObs.map(obs => `<option value="${obs}">${obs}</option>`).join('');
+            updateFields();
+        }
+
+        function updateFields() {
+            const obsSelect = document.getElementById('obsspace-select');
+            const fieldSelect = document.getElementById('field-select');
+            
+            const selectedObs = obsSelect.value;
+            const matchingFields = comparisonData
+                .filter(item => item.obsspace === selectedObs)
+                .map(item => item.variable)
+                .sort();
+
+            fieldSelect.innerHTML = matchingFields.map(f => `<option value="${f}">${f}</option>`).join('');
+            updateAttributes();
+        }
+
+        function updateAttributes() {
+            const obsSelect = document.getElementById('obsspace-select');
+            const fieldSelect = document.getElementById('field-select');
+            const attrSelect = document.getElementById('attribute-select');
+            
+            const selectedObs = obsSelect.value;
+            const selectedField = fieldSelect.value;
+            
+            const matchedRecord = comparisonData.find(item => 
+                item.obsspace === selectedObs && item.variable === selectedField
+            );
+
+            if (matchedRecord && matchedRecord.metrics) {
+                const attributes = Object.keys(matchedRecord.metrics).sort();
+                attrSelect.innerHTML = attributes.map(a => `<option value="${a}">${a}</option>`).join('');
+                renderPlot();
+            }
+        }
+
+        function renderPlot() {
+            const obsSelect = document.getElementById('obsspace-select');
+            const fieldSelect = document.getElementById('field-select');
+            const attrSelect = document.getElementById('attribute-select');
+            const plotImg = document.getElementById('comparison-plot');
+
+            const selectedObs = obsSelect.value;
+            const selectedField = fieldSelect.value;
+            const selectedAttr = attrSelect.value;
+
+            const matchedRecord = comparisonData.find(item => 
+                item.obsspace === selectedObs && item.variable === selectedField
+            );
+
+            if (matchedRecord && matchedRecord.metrics && matchedRecord.metrics[selectedAttr]) {
+                plotImg.src = matchedRecord.metrics[selectedAttr];
+            }
         }
 
         window.onload = function() {
             const first = document.querySelector(".tab-button");
             if (first) {
                 first.click();
+            }
+            // Initialize matrix engine if data is available
+            if (comparisonData && comparisonData.length > 0) {
+                initSelectors();
             }
         };
     </script>
@@ -34,6 +114,12 @@
         {{ dataset.name }}
     </button>
     {% endfor %}
+    
+    {% if website.meta.has_comparisons %}
+    <button class="tab-button" id="button-comparisons" onclick="showDataset('comparisons')" style="border-left: 2px solid #cbd5e1; color: #2563eb;">
+        📊 Multi-Run Comparisons
+    </button>
+    {% endif %}
 </div>
 
 {% for dataset in website.datasets %}
@@ -112,5 +198,29 @@
     </table>
 </div>
 {% endfor %}
+
+{% if website.meta.has_comparisons %}
+<!-- REPLACED CLEAN COMPARISON STAGE PANEL -->
+<div class="comparison-section-panel" id="panel-comparisons" style="display: none; background: white; padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    
+    <!-- 3 Drop-down selectors inside a single uniform row -->
+    <div style="display: flex; gap: 16px; margin-bottom: 24px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+        <div style="flex: 1;">
+            <select id="obsspace-select" onchange="updateFields()" style="width: 100%; padding: 8px; font-size: 0.9em; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; background: #fff; color: #334155; cursor: pointer;"></select>
+        </div>
+        <div style="flex: 1;">
+            <select id="field-select" onchange="updateAttributes()" style="width: 100%; padding: 8px; font-size: 0.9em; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; background: #fff; color: #334155; cursor: pointer;"></select>
+        </div>
+        <div style="flex: 1;">
+            <select id="attribute-select" onchange="renderPlot()" style="width: 100%; padding: 8px; font-size: 0.9em; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; background: #fff; color: #334155; cursor: pointer;"></select>
+        </div>
+    </div>
+
+    <!-- The Single Chart Stage Container -->
+    <div id="plot-container" style="text-align: center; background: #ffffff; padding: 16px; border: 1px solid #e2e8f0; border-radius: 6px;">
+        <img id="comparison-plot" src="" alt="Select options above to render comparison trend" style="max-width: 100%; height: auto; border-radius: 4px;" />
+    </div>
+</div>
+{% endif %}
 
 {% endblock %}

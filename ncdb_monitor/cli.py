@@ -13,7 +13,6 @@ from ncdb.api.database import Database
 from ncdb_monitor.generate import generate_website_data
 from ncdb_monitor.render import generate_html
 
-# Dynamic registration lookup layer from core library package instead of hardcoded imports
 from ncdb.scanners import list_scanners
 
 from http.server import SimpleHTTPRequestHandler
@@ -29,7 +28,6 @@ def cmd_scan(args):
     logger.info(f"Data root: {args.data_dir}")
     logger.info(f"Scanner: {args.scanner}")
 
-    # Pass the scanner string directly as expected by refactored database.py
     report = db.scan(
         data_root=args.data_dir,
         n_cycles=args.n_cycles,
@@ -53,7 +51,6 @@ def cmd_generate(args):
 
     website_dir = Path(args.website_dir)
 
-    # Passed down the snapshots boolean toggle cleanly
     generate_website_data(
         db=db,
         website_dir=website_dir,
@@ -81,7 +78,7 @@ def save_run_report(website_dir, run_report):
         json.dump(run_report, f, indent=2)
 
 
-def cmd_run(args):
+def old_cmd_run(args):
     from datetime import datetime
     import time
 
@@ -90,13 +87,8 @@ def cmd_run(args):
 
     logger.info("=== NCDB Monitor PIPELINE ===")
 
-    # SCAN
     cmd_scan(args)
-
-    # GENERATE (Uses the parsed snapshots argument)
     cmd_generate(args)
-
-    # RENDER
     cmd_render(args)
 
     end = time.time()
@@ -116,6 +108,37 @@ def cmd_run(args):
     }
 
     save_run_report(args.website_dir, run_report)
+    return run_report
+
+def cmd_run(args):
+    from datetime import datetime
+    import time
+
+    start = time.time()
+    start_time = datetime.utcnow().isoformat() + "Z"
+
+    logger.info("=== NCDB Monitor PIPELINE ===")
+
+    cmd_scan(args)
+    
+    end_time = datetime.utcnow().isoformat() + "Z"
+    run_report = {
+        "status": "success",
+        "start_time": start_time,
+        "end_time": end_time,
+        "duration_seconds": round(time.time() - start, 3),
+        "database": args.database,
+        "website_dir": str(args.website_dir),
+        "scanner": args.scanner,
+        "n_cycles": args.n_cycles,
+        "data_dir": str(args.data_dir),
+        "snapshots_generated": args.snapshots,
+    }
+    save_run_report(args.website_dir, run_report)
+
+    cmd_generate(args)
+    cmd_render(args)
+
     return run_report
 
 
@@ -149,8 +172,6 @@ def build_parser():
         required=True
     )
 
-    # --- SHARED ARGUMENT PARENT FOR SNAPSHOT TOGGLE ---
-    # Python argparse action="store_true" handles the boolean switch cleanly
     snapshot_parser = argparse.ArgumentParser(add_help=False)
     snapshot_parser.add_argument(
         "--snapshots",
@@ -159,7 +180,6 @@ def build_parser():
         help="Enable or disable 2D map snapshot generation (default: false)"
     )
 
-    # Dynamically extract registered scanners list from ncdb package environment
     available_scanners = list_scanners()
 
     #
